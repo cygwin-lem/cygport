@@ -1,3 +1,4 @@
+# -*- mode: sh; sh-shell: bash -*-
 ################################################################################
 #
 # pkg_pkg.cygpart - cygport packaging functions
@@ -724,6 +725,7 @@ __pkg_dist() {
 	do
 		pkg_category_var=${pkg_name[${n}]//[-+\.]/_}_CATEGORY;
 		pkg_requires_var=${pkg_name[${n}]//[-+\.]/_}_REQUIRES;
+		pkg_requires_suppress_var=${pkg_name[${n}]//[-+\.]/_}_REQUIRES_SUPPRESS;
 		pkg_summary_var=${pkg_name[${n}]//[-+\.]/_}_SUMMARY;
 		pkg_description_var=${pkg_name[${n}]//[-+\.]/_}_DESCRIPTION;
 		pkg_message_var=${pkg_name[${n}]//[-+\.]/_}_MESSAGE;
@@ -741,6 +743,10 @@ __pkg_dist() {
 		if [ -z "${distsubdir}${!pkg_requires_var}" -a -n "${REQUIRES+yes}" ]
 		then
 			declare ${pkg_requires_var}="${REQUIRES}"
+		fi
+		if [ -z "${distsubdir}${!pkg_requires_suppress_var}" -a -n "${REQUIRES_SUPPRESS+yes}" ]
+		then
+			declare ${pkg_requires_suppress_var}="${REQUIRES_SUPPRESS}"
 		fi
 		if [ -z "${distsubdir}${!pkg_obsoletes_var}" -a -n "${OBSOLETES+yes}" ]
 		then
@@ -763,9 +769,11 @@ __pkg_dist() {
 		then
 			if [ "${CBUILD##*-}" = "cygwin" ]
 			then
-				pkg_bin_requires=$(__list_deps $(sort -fu ${T}/.${pkg_name[${n}]}.lst | sed -e '\|/$|d;s| |^_^|g') \
-						   | sed -e "/^${pkg_name[${n}]}-[0-9].*$/d;s/-[0-9].*$//g" \
-						   | sort -fu | sed -e ':a;N;$!ba;s/\n/ /g' )
+			    pkg_bin_requires=$( echo ${!pkg_requires_suppress_var} ${!pkg_requires_suppress_var} \
+						$(__list_deps $(sort -fu ${T}/.${pkg_name[${n}]}.lst | sed -e '\|/$|d;s| |^_^|g') \
+						      | sed -e "/^${pkg_name[${n}]}-[0-9].*$/d;s/-[0-9].*$//g" \
+						      | sort -fu | sed -e ':a;N;$!ba;s/\n/ /g' ) \
+						    | tr ' ' '\n' | sort | uniq -u | tr '\n' ' ' )
 				__step "${pkg_name[${n}]} requires: ${pkg_bin_requires} ${!pkg_requires_var}"
 			else
 				pkg_bin_requires=
