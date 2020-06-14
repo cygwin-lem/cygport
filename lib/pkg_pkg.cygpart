@@ -137,7 +137,7 @@ __pkg_binpkg() {
 		*-[0-9]*) error "Package ${pkg_name[${n}]}: Use underscore instead of hyphen when followed by digit" ;;
 		esac
 
-		__step "${pkg_name[${n}]}-${PVR}.tar.xz";
+		__step "${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT-.tar.xz}";
 
 		pkg_contents_var=${pkg_name[${n}]//[-+\.]/_}_CONTENTS;
 		pkg_docs_var=${pkg_name[${n}]//[-+\.]/_}_DOCS;
@@ -171,7 +171,7 @@ __pkg_binpkg() {
 		if defined pkg_contents
 		then
 			mkdir -p ${distdir}/${PN}/${distsubdir};
-			tar Jcvf ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}.tar.xz \
+			${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} \
 				--exclude=usr/lib/debug --exclude=usr/src \
 				--exclude=${autoloaddir} \
 				${pkg_contents} \
@@ -180,7 +180,7 @@ __pkg_binpkg() {
 		else
 			inform "Creating empty package"
 			mkdir -p ${distdir}/${PN}/${distsubdir};
-			tar -Jcf ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}.tar.xz --files-from /dev/null \
+			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null \
 				|| error "Empty package creation failed"
 			> ${T}/.${pkg_name[${n}]}.lst
 		fi
@@ -193,9 +193,9 @@ __pkg_binpkg() {
 		[ -d ${autoloaddir} ] || autoloaddir=
 		local dbg_contents_var=${PN//[-+\.]/_}_debuginfo_CONTENTS;
 
-		__step "${PN}-debuginfo-${PVR}.tar.xz";
+		__step "${PN}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz}";
 		mkdir -p ${distdir}/${PN}/${PN}-debuginfo;
-		tar Jcvf ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}.tar.xz \
+		${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz} \
 			usr/*/debug/ ${autoloaddir} ${!dbg_contents_var} \
 			| tee ${T}/.${PN}-debuginfo.lst \
 			|| error "Debuginfo package creation failed: ${PN}-debuginfo"
@@ -224,7 +224,7 @@ __pkg_pkgcheck() {
 		n+=1
 	done
 
-	if ! defined _CYGPORT_RESTRICT_debuginfo_ && [ -f ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}.tar.xz ]
+	if ! defined _CYGPORT_RESTRICT_debuginfo_ && [ -f ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz} ]
 	then
 		grep -Ev "/$" ${T}/.${PN}-debuginfo.lst >> ${tmp1}
 	fi
@@ -520,7 +520,7 @@ __pkg_srcpkg() {
 
 	cd ${spkgdir%/*};
 
-	tar Jcvf ${distdir}/${PN}/${PF}-src.tar.xz ${spkgdir##*/}/ || error "Source package creation failed"
+	${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${PF}-src${CYGPORT_TAR_EXT-.tar.xz} ${spkgdir##*/}/ || error "Source package creation failed"
 	echo;
 }
 
@@ -836,7 +836,7 @@ _EOF
 			fi
 
 			mkdir -p ${distdir}/${PN}/${obssubdir};
-			tar -Jcf ${distdir}/${PN}/${obssubdir}/${obspkg}-${PVR}.tar.xz --files-from /dev/null
+			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${obssubdir}/${obspkg}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null
 
 			__step "${pkg_name[${n}]} OBSOLETES: ${obspkg}"
 
@@ -855,7 +855,7 @@ _EOF
 		n+=1;
 	done
 
-	if ! defined _CYGPORT_RESTRICT_debuginfo_ && [ -f ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}.tar.xz ]
+	if ! defined _CYGPORT_RESTRICT_debuginfo_ && [ -f ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz} ]
 	then
 		if [ -f ${C}/${PN}-debuginfo.hint ]
 		then
@@ -888,7 +888,7 @@ _EOF
 		for obspkg in ${!dbg_obsoletes_var}
 		do
 			mkdir -p ${distdir}/${PN}/${obspkg};
-			tar -Jcf ${distdir}/${PN}/${obspkg}/${obspkg}-${PVR}.tar.xz --files-from /dev/null
+			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${obspkg}/${obspkg}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null
 
 			__step "${PN}-debuginfo OBSOLETES: ${obspkg}"
 
