@@ -523,6 +523,16 @@ __pkg_srcpkg() {
 	echo;
 }
 
+__single_line_list () {
+  printf "%s" "$*" | sed -ze 's/[\t\n\f\r]/ /g;s/  */ /g;s/^ *//;s/ *$//'
+}
+
+__single_line_double_quoted_string () {
+	printf '%s' '"'
+  printf '%s' "$*" | sed -ze 's/[\t\n\f\r]/ /g;s/  */ /g;s/^ *//;s/ *$//'
+	printf '%s' '"'
+}
+
 __pkg_dist() {
 	local -i n;
 	local -a pkg_hint;
@@ -773,29 +783,29 @@ __pkg_dist() {
 			fi
 
 			cat > ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}.hint <<-_EOF
-category: ${!pkg_category_var:-${CATEGORY}}
-requires: ${pkg_bin_requires} ${!pkg_requires_var}
-sdesc: "${!pkg_summary_var:-${SUMMARY}}"
+$(__single_line_list category: ${!pkg_category_var:-${CATEGORY}})
+$(__single_line_list requires: ${pkg_bin_requires} ${!pkg_requires_var})
+sdesc: $(__single_line_double_quoted_string "${!pkg_summary_var:-${SUMMARY}}")
 ldesc: "${!pkg_description_var:-${DESCRIPTION:-${!pkg_summary_var:-${SUMMARY}}}}"
 _EOF
 			if [ -n "${!pkg_obsoletes_var}" ]
 			then
 				cat >> ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}.hint <<-_EOF
-obsoletes: ${!pkg_obsoletes_var}
+$(__single_line_list obsoletes: ${!pkg_obsoletes_var})
 _EOF
 			fi
 
 			if [ -n "${!pkg_provides_var}" ]
 			then
 				cat >> ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}.hint <<-_EOF
-provides: ${!pkg_provides_var}
+$(__single_line_list provides: ${!pkg_provides_var})
 _EOF
 			fi
 
 			if [ -n "${!pkg_conflicts_var}" ]
 			then
 				cat >> ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}.hint <<-_EOF
-conflicts: ${!pkg_conflicts_var}
+$(__single_line_list conflicts: ${!pkg_conflicts_var})
 _EOF
 			fi
 
@@ -808,7 +818,7 @@ _EOF
 			if defined ${pkg_message_var}
 			then
 				cat >> ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}.hint <<-_EOF
-message: ${pkg_name[${n}]} "${!pkg_message_var}"
+message: ${pkg_name[${n}]} $(__single_line_double_quoted_string "${!pkg_message_var}")
 _EOF
 			fi
 			cat >> ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}.hint <<-_EOF
@@ -862,7 +872,7 @@ _EOF
 			fi
 			cat > ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}.hint <<-_EOF
 category: Debug
-requires: ${pkg_debug_requires}
+$(__single_line_list requires: ${pkg_debug_requires})
 external-source: ${PN}
 sdesc: "Debug info for ${PN}"
 ldesc: "This package contains files necessary for debugging the
@@ -872,7 +882,7 @@ _EOF
 			if [ -n "${!dbg_obsoletes_var}" ]
 			then
 				cat >> ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}.hint <<-_EOF
-obsoletes: ${!dbg_obsoletes_var}
+$(__single_line_list obsoletes: ${!dbg_obsoletes_var})
 _EOF
 			fi
 		fi
@@ -914,9 +924,9 @@ _EOF
 			-a -n "${!pkg_summary_var:-${SUMMARY}}${!pkg_description_var:-${DESCRIPTION}}" ]
 		then
 			cat > ${distdir}/${PN}/${PN}-${PVR}-src.hint <<-_EOF
-category: ${!pkg_category_var:-${CATEGORY}}
-build-depends: cygport ${BUILD_REQUIRES}
-sdesc: "${!pkg_summary_var:-${SUMMARY}}"
+$(__single_line_list category: ${!pkg_category_var:-${CATEGORY}})
+$(__single_line_list build-depends: cygport ${BUILD_REQUIRES})
+sdesc: $(__single_line_double_quoted_string "${!pkg_summary_var:-${SUMMARY}}")
 ldesc: "${!pkg_description_var:-${DESCRIPTION:-${!pkg_summary_var:-${SUMMARY}}}}"
 skip:
 ${pkg_tag}
