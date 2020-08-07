@@ -20,6 +20,91 @@
 # along with cygport.  If not, see <http://www.gnu.org/licenses/>.
 #
 ################################################################################
+# #### In order to override default settings by .cygport.conf or .cygportrc,
+
+# ## New default extension, which can also be overridden
+# ## by an environment variable
+# CYGPORT_TAR_EXT=${CYGPORT_TAR_EXT:-.tar.zzz}
+CYGPORT_TAR_EXT=${CYGPORT_TAR_EXT:-.tar.zst}
+
+# ## New default compression filters corresponding to extensions
+# declare -A CYGPORT_TAR_EXT2FILTER=(
+# 	[.tar.zzz]="zzzcomp --level=9"
+# )
+# ## Can be overriden by CYGPORT_TAR_FILTER="zzzcomp --level=10"
+declare -A CYGPORT_TAR_EXT2FILTER # Overrides __CYGPORT_TAR_EXT2FILTER
+
+# ## New default owner/group settings
+# declare -A CYGPORT_TAR_ARGS=(
+# 	[owner]="username"
+# 	[group]="groupname"
+# )
+# ## Can be overriden by CYGPORT_TAR_OPTS="--owner=usrname --group=groupname"
+declare -A CYGPORT_TAR_ARGS
+
+################################################################################
+declare -A __CYGPORT_TAR_EXT2FILTER=(
+	[.tar.Z]="compress"
+	[.tar.gz]="gzip"
+	[.tar.bz2]="bzip2"
+	[.tar.lz]="lzip"
+	[.tar.lzo]="lzop"
+	[.tar.xz]="xz"
+	[.tar.lzma]="lzma"
+	[.tar.zst]="zstd -T0" # Use multi-threading for zst files.
+)
+
+__CYGPORT_TAR_FILTER_DEFAULT=${CYGPORT_TAR_EXT2FILTER[${CYGPORT_TAR_EXT}]:-${__CYGPORT_TAR_EXT2FILTER[${CYGPORT_TAR_EXT}]}}
+
+if [ -n "${CYGPORT_TAR_FILTER}" ]; then
+	__CYGPORT_TAR_FILTER_ARGS=( -I "${CYGPORT_TAR_FILTER}" )
+elif [ -v CYGPORT_TAR_FILTER ]; then # CYGPORT_TAR_FILTER is defined and empty.
+	__CYGPORT_TAR_FILTER_ARGS=( )
+elif [ -n "${__CYGPORT_TAR_FILTER_DEFAULT}" ]; then
+	__CYGPORT_TAR_FILTER_ARGS=( -I "${__CYGPORT_TAR_FILTER_DEFAULT}" )
+else
+	# We have no hints to determine a compression filter,
+	# and pass determination to tar.
+	__CYGPORT_TAR_FILTER_ARGS=( --auto-compress )
+fi
+# Discard __CYGPORT_TAR_FILTER_ARGS when they conflict with CYGPORT_TAR_OPTS.
+if tar \
+	"${__CYGPORT_TAR_FILTER_ARGS[@]}" \
+	${CYGPORT_TAR_OPTS} \
+	--version >/dev/null 2>&1; then
+	:
+else
+	warning "Confliction in tar options:"
+	warning "  tar ${__CYGPORT_TAR_FILTER_ARGS[*]@Q} ${CYGPORT_TAR_OPTS}"
+	warning "And we use:"
+	warning "  tar ${CYGPORT_TAR_OPTS}"
+	warning "In order to override a compression filter setting, please set"
+	warning "  CYGPORT_TAR_FILTER"
+	warning "which is to be passed to tar with '-I' option"
+	__CYGPORT_TAR_FILTER_ARGS=( )
+fi
+
+__pkg_do_tar_create_file_with_basename () {
+	local DST_BASE="$1"
+	local DST_DIR="${1%/*}"
+	shift
+
+	__CYGPORT_TAR_OWNER_GROUP_ARGS_DEFAULT=(
+		"--owner=${CYGPORT_TAR_ARGS[owner]:-${NAME}}" # default is a package name
+		"--group=${CYGPORT_TAR_ARGS[group]:-cygwin}"  # default is "cygwin"
+	)
+
+	if [ x"${DST_BASE}" != x"${DST_DIR}" ]; then
+		mkdir -p "${DST_DIR}"
+	fi
+	tar \
+		"${__CYGPORT_TAR_OWNER_GROUP_ARGS_DEFAULT[@]}" \
+		"${__CYGPORT_TAR_FILTER_ARGS[@]}" \
+		${CYGPORT_TAR_OPTS} \
+		-cf "${DST_BASE}${CYGPORT_TAR_EXT}" \
+		--files-from /dev/null \
+		"$@"
+}
 
 #****** Chapter 12/Packaging
 #  INTRODUCTION
@@ -170,8 +255,9 @@ __pkg_binpkg() {
 
 		if defined pkg_contents
 		then
-			mkdir -p ${distdir}/${PN}/${distsubdir};
-			${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} \
+			__pkg_do_tar_create_file_with_basename \
+				${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR} \
+				--verbose \
 				--exclude=usr/lib/debug --exclude=usr/src \
 				--exclude=${autoloaddir} \
 				${pkg_contents} \
@@ -179,8 +265,8 @@ __pkg_binpkg() {
 				|| error "Binary package creation failed: ${pkg_name[${n}]}"
 		else
 			inform "Creating empty package"
-			mkdir -p ${distdir}/${PN}/${distsubdir};
-			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null \
+			__pkg_do_tar_create_file_with_basename \
+				${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR} \
 				|| error "Empty package creation failed"
 			> ${T}/.${pkg_name[${n}]}.lst
 		fi
@@ -194,8 +280,9 @@ __pkg_binpkg() {
 		local dbg_contents_var=${PN//[-+\.]/_}_debuginfo_CONTENTS;
 
 		__step "${PN}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz}";
-		mkdir -p ${distdir}/${PN}/${PN}-debuginfo;
-		${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz} \
+		__pkg_do_tar_create_file_with_basename \
+			${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR} \
+			--verbose \
 			usr/*/debug/ ${autoloaddir} ${!dbg_contents_var} \
 			| tee ${T}/.${PN}-debuginfo.lst \
 			|| error "Debuginfo package creation failed: ${PN}-debuginfo"
@@ -520,7 +607,11 @@ __pkg_srcpkg() {
 
 	cd ${spkgdir%/*};
 
-	${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${PF}-src${CYGPORT_TAR_EXT-.tar.xz} ${spkgdir##*/}/ || error "Source package creation failed"
+	__pkg_do_tar_create_file_with_basename \
+		${distdir}/${PN}/${PF}-src \
+		--verbose \
+		${spkgdir##*/}/ \
+		|| error "Source package creation failed"
 	echo;
 }
 
@@ -835,8 +926,8 @@ _EOF
 				obssubdir=${obspkg};
 			fi
 
-			mkdir -p ${distdir}/${PN}/${obssubdir};
-			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${obssubdir}/${obspkg}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null
+			__pkg_do_tar_create_file_with_basename \
+				${distdir}/${PN}/${obssubdir}/${obspkg}-${PVR}
 
 			__step "${pkg_name[${n}]} OBSOLETES: ${obspkg}"
 
@@ -887,8 +978,8 @@ _EOF
 
 		for obspkg in ${!dbg_obsoletes_var}
 		do
-			mkdir -p ${distdir}/${PN}/${obspkg};
-			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${obspkg}/${obspkg}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null
+			__pkg_do_tar_create_file_with_basename \
+				${distdir}/${PN}/${obspkg}/${obspkg}-${PVR}
 
 			__step "${PN}-debuginfo OBSOLETES: ${obspkg}"
 
