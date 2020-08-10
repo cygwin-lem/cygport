@@ -82,7 +82,7 @@ __pkg_upload() {
 
 	# Check that binary and source package files exist
 
-	pkg_files=("${NAME}/${NAME}-${PVR}-${CYGPORT_TAR_EXT-src.tar.xz}" "${NAME}/${NAME}-${PVR}-src.hint")
+	pkg_files=("${NAME}/${NAME}-${PVR}-src${CYGPORT_TAR_EXT}" "${NAME}/${NAME}-${PVR}-src.hint")
 
 	while (( n < pkg_count ))
 	do
@@ -91,13 +91,13 @@ __pkg_upload() {
 		*)      distsubdir=${pkg_name[${n}]} ;;
 		esac
 
-		pkg_files+=("${NAME}/${distsubdir}/${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT-.tar.xz}" "${NAME}/${distsubdir}/${pkg_name[${n}]}-${PVR}.hint")
+		pkg_files+=("${NAME}/${distsubdir}/${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT}" "${NAME}/${distsubdir}/${pkg_name[${n}]}-${PVR}.hint")
 		n+=1
 	done
 
 	if [ -d ${NAME}/${NAME}-debuginfo ]
 	then
-		pkg_files+=("${NAME}/${NAME}-debuginfo/${NAME}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz}" "${NAME}/${NAME}-debuginfo/${NAME}-debuginfo-${PVR}.hint")
+		pkg_files+=("${NAME}/${NAME}-debuginfo/${NAME}-debuginfo-${PVR}${CYGPORT_TAR_EXT}" "${NAME}/${NAME}-debuginfo/${NAME}-debuginfo-${PVR}.hint")
 	fi
 
 	for file in "${pkg_files[@]}"

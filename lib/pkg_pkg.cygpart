@@ -20,6 +20,38 @@
 # along with cygport.  If not, see <http://www.gnu.org/licenses/>.
 #
 ################################################################################
+# Configuration about tar command and tar file extension
+#   *** Probably, this part should be moved to cygport.in ***
+#
+# CYGPORT_TAR_EXT: to be used in pkg_pkg.cygpart and pkg_upload.cygpart.
+#   Default extension of tar files to be generated.
+#   It should be consistent with CYGPORT_TAR_CMD.
+CYGPORT_TAR_EXT=${CYGPORT_TAR_EXT:-.tar.xz}
+
+# CYGPORT_TAR_CMD: to be used in pkg_pkg.cygpart.
+#   Default tar command for generating tar files.
+#   It should be consistent with CYGPORT_TAR_EXT.
+CYGPORT_TAR_CMD=${CYGPORT_TAR_CMD:-tar -J}
+
+################################################################################
+__pkg_do_tar_create_file_with_basename () {
+	# Path to a tar file without extension CYGPORT_TAR_EXT.
+	local DST_BASE="$1"
+	shift
+
+  # make sure the directory exist
+	local DST_DIR="${DST_BASE%/*}"
+	if [ x"${DST_BASE}" != x"${DST_DIR}" ]; then
+		mkdir -p "${DST_DIR}" \
+		|| error "Failed: mkdir -p ${DST_DIR@Q}"
+	fi
+	sh -c "\
+		${CYGPORT_TAR_CMD} \
+			-cf ${DST_BASE@Q}${CYGPORT_TAR_EXT@Q} \
+			--files-from /dev/null \
+			$* \
+	"
+}
 
 #****** Chapter 12/Packaging
 #  INTRODUCTION
@@ -170,19 +202,23 @@ __pkg_binpkg() {
 
 		if defined pkg_contents
 		then
-			mkdir -p ${distdir}/${PN}/${distsubdir};
-			${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} \
-				--exclude=usr/lib/debug --exclude=usr/src \
-				--exclude=${autoloaddir} \
-				${pkg_contents} \
+			__pkg_do_tar_create_file_with_basename \
+				"${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}" \
+				"\
+					--verbose \
+					--exclude=usr/lib/debug \
+					--exclude=usr/src \
+					--exclude=${autoloaddir} \
+					${pkg_contents} \
+				"\
 				| tee ${T}/.${pkg_name[${n}]}.lst \
 				|| error "Binary package creation failed: ${pkg_name[${n}]}"
 		else
 			inform "Creating empty package"
-			mkdir -p ${distdir}/${PN}/${distsubdir};
-			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null \
+			__pkg_do_tar_create_file_with_basename \
+				"${distdir}/${PN}/${distsubdir}/${pkg_name[${n}]}-${PVR}" \
+				> ${T}/.${pkg_name[${n}]}.lst \
 				|| error "Empty package creation failed"
-			> ${T}/.${pkg_name[${n}]}.lst
 		fi
 		echo;
 		n+=1;
@@ -194,9 +230,14 @@ __pkg_binpkg() {
 		local dbg_contents_var=${PN//[-+\.]/_}_debuginfo_CONTENTS;
 
 		__step "${PN}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz}";
-		mkdir -p ${distdir}/${PN}/${PN}-debuginfo;
-		${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}${CYGPORT_TAR_EXT-.tar.xz} \
-			usr/*/debug/ ${autoloaddir} ${!dbg_contents_var} \
+		__pkg_do_tar_create_file_with_basename \
+			"${distdir}/${PN}/${PN}-debuginfo/${PN}-debuginfo-${PVR}" \
+			"\
+				--verbose \
+				usr/*/debug/ \
+				${autoloaddir} \
+				${!dbg_contents_var} \
+			"\
 			| tee ${T}/.${PN}-debuginfo.lst \
 			|| error "Debuginfo package creation failed: ${PN}-debuginfo"
 		echo;
@@ -520,7 +561,13 @@ __pkg_srcpkg() {
 
 	cd ${spkgdir%/*};
 
-	${CYGPORT_TAR_CMD-tar -J} -cvf ${distdir}/${PN}/${PF}-src${CYGPORT_TAR_EXT-.tar.xz} ${spkgdir##*/}/ || error "Source package creation failed"
+	__pkg_do_tar_create_file_with_basename \
+		"${distdir}/${PN}/${PF}-src" \
+		"\
+			--verbose \
+			${spkgdir##*/} \
+		"\
+		|| error "Source package creation failed"
 	echo;
 }
 
@@ -835,8 +882,8 @@ _EOF
 				obssubdir=${obspkg};
 			fi
 
-			mkdir -p ${distdir}/${PN}/${obssubdir};
-			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${obssubdir}/${obspkg}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null
+			__pkg_do_tar_create_file_with_basename \
+				"${distdir}/${PN}/${obssubdir}/${obspkg}-${PVR}"
 
 			__step "${pkg_name[${n}]} OBSOLETES: ${obspkg}"
 
@@ -887,8 +934,8 @@ _EOF
 
 		for obspkg in ${!dbg_obsoletes_var}
 		do
-			mkdir -p ${distdir}/${PN}/${obspkg};
-			${CYGPORT_TAR_CMD-tar -J} -cf ${distdir}/${PN}/${obspkg}/${obspkg}-${PVR}${CYGPORT_TAR_EXT-.tar.xz} --files-from /dev/null
+			__pkg_do_tar_create_file_with_basename \
+				"${distdir}/${PN}/${obspkg}/${obspkg}-${PVR}"
 
 			__step "${PN}-debuginfo OBSOLETES: ${obspkg}"
 
