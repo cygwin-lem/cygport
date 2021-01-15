@@ -331,7 +331,14 @@ __list_deps() {
 		done
 	fi
 
-	if check_prog lua
+#****v* Information/__SKIP_LIST_DEPS_LUA
+#  DESCRIPTION
+#  A flag in __list_deps() to skip detecting depedency on lua.
+#  Set a nonempty string to __SKIP_LIST_DEPS_LUA in order to skip.
+#  (e.g. in case Lua's of different versions exist).
+#****
+
+	if [ -z "${__SKIP_LIST_DEPS_LUA}" ] && check_prog lua
 	then
 		luapaths=($(lua -e 'print(package.path..";"..package.cpath)' | tr '\;' ' '))
 		luapaths+=" ${DEPS_PATH//:/ }"
