@@ -190,6 +190,13 @@ __gpg_verify() {
 
 __mkdirs() {
 	cd ${top};
+
+	# Remove all extended ACL entries of ${workdir}, first,
+	# as a fool proof (e.g., in case file permission tests are required,
+	# or in case file permission under ${D} would be contaminated).
+	mkdir -p ${workdir}
+	setfacl -b ${workdir}
+
 	mkdir -p ${srcdir} ${origsrcdir} ${B} ${D} ${T} ${configdir} ${logdir} ${distdir} ${patchdir} ${spkgdir};
 }
 
