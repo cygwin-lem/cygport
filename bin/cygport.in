@@ -318,7 +318,7 @@ source ${_privlibdir}/src_install.cygpart
 source ${_privlibdir}/src_postinst.cygpart
 ###
 
-### __list_files, __show_deps, __show_info, __show_web
+### __list_files, __show_deps, __show_info, __show_web, __show_build_deps, __show_build_deps_oneline
 source ${_privlibdir}/pkg_info.cygpart
 ###
 
@@ -613,6 +613,14 @@ do
 			;;
 		listdebug*|listdbg*)
 			__list_debug_files;
+			_status=$?;
+			;;
+		builddep*oneline)
+			__show_build_deps_oneline;
+			_status=$?;
+			;;
+		builddep*)
+			__show_build_deps;
 			_status=$?;
 			;;
 		dep*)
