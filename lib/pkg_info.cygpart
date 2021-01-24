@@ -658,5 +658,25 @@ __show_web() {
 	${mybrowser} ${mywww} &>/dev/null &
 }
 
+__make_oneline_sorted() {
+	# Make a space separated list of items;
+	# spaces are trimmed and squeezed.
+	printf '%s\n' $@ | sort -u | sed -ze 's/\n/ /g;s/ $//'
+}
+__make_list_sorted() {
+	# Make a list of items; one item per line.
+	printf '%s\n' $@ | sort -u
+}
+
+__show_build_deps_oneline() {
+	__make_oneline_sorted cygport ${BUILD_REQUIRES}
+}
+
+__show_build_deps() {
+	__make_list_sorted cygport ${BUILD_REQUIRES}
+}
+
 readonly -f __list_files __list_debug_files __list_deps \
-	    __show_deps __show_info __show_web __pager
+	    __show_deps __show_info __show_web __pager \
+	    __show_build_deps __show_build_deps_oneline \
+	    __make_list_sorted __make_oneline_sorted
